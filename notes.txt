@@ -1,0 +1,360 @@
+- NAry Trees, HAshmap
+- databases, indexing and benefits
+- password hashing
+- thread vs process
+- multithreading vs multiprocessing
+- CPU processing, speed of CPU, and CPU metrics
+- RAM getting co, boot loader
+- virtual memory
+- IP / MAC / HTTP vs HTTPs / DNS / Signatures
+- RSA / SSL / VPN
+- How pointers get stored
+- How domains work
+- Map vs Unorderedmap
+
+
+- password hashing
+never store passwords as it is in database, because if database is compromised 
+hash the password -> store it in db (MD5 / SHA 1)
+salt the password -> hash + salt (without salt pass can be easily attacked)
+
+---------------------------------------------------------------------------------
+- Indexing
+
+- sorting records based on fields
+- creates another datastructure that hods field value and a pointer to the record that it holds - this structure is then sorted, now binary search is run
+
+-------------------------
+
+Domain Name System
+
+- domain names to IP addresses
+- Browser makes dns request to dns server
+- DNS -> Authoritative DNS Servers
+    Root name servers ->
+    Top Level Domain Nameservers (.com, .org, .ai)
+    authoritative server (google.com, wiki.org)
+
+
+Life cycle
+Google.com -> browser checks cache -> OS call -> checks OS cache -> DNS Resolver (ISP) -> cache -> root name servers
+
+------------------------------------------------------------------------------
+
+Youtube System Dedesign
+
+Funcitonal requirements:
+- Upload
+- watch videos
+
+Non functional requiremts:
+- reliability
+- Scale - thousands of concurrent viewers
+- availability >>> consistency
+- minimise latency
+
+
+Est
+- 1B DAU
+- 5 videos / day / user
+- 1 video upload / day
+
+
+High Level Design
+
+Upload ------>
+
+50M uploads / day
+
+load balancer ---- app servers 1, 2, 3
+
+user uploads --> app server --> object store (s3) ---> Message Queue (for encoding) -> encoding service --> object store(S3) (encoded) 
+                            --> NoSQL DB (metadata) / read heavy / MongoDB
+                            --> cache
+            
+            --> CDN -------------------------------------------------------------------------------------------- Object store (s3)
+
+- rate limiter needs to be added
+- recommendations
+- youtuve actually uses MySQL
+
+
+
+---------------------------------------
+System Design 
+Proxitmity Service
+
+requirements 
+- return list of business in the users circumference
+- business owners do CRUD operations - compromise on real time updations
+- users can view details of business
+
+non functional:
+- 100 M DAU / 200 m businesse
+- latency should be low
+- high availability
+
+
+Assumptions:
+5 queries / day each user
+100m * 5 => 5000 queris / sec
+storage needed for 200M -> ??
+
+High level Design
+
+- GET /search/nearby
+    latitude
+    longitude
+    radius
+- GET business details
+    CRUD endpoints for business
+
+Database Schema
+- PK - businessId
+    address
+    state
+- geospacial_index
+    location
+    business_id
+
+Storage Requirements:
+- business table - 200M * 1kb => 200 * 10^6 * 1kb = 200GB
+- geo table - 200 24 bytes -> 5GB
+
+
+Rough Design
+
+Location based service - finds nearby businesses - read heavy, QPS 5000 QPS
+Business service - writes, caches
+
+DB Choice:
+
+- The services are read-heavy
+- The read QPS >>> write QPS
+- the writes dont need to be immediate
+
+DB Cluster
+- primary and read replicas
+- primary handles writes
+
+- geospacial databses, redis, postgress gis
+-------------------------------------------------------------------
+
+
+
+
+
+
+
+
+-- Youtube system design
+-- DNS
+-- OSI Arch
+-- How web works, routing, packet transfer, networking, ARP
+-- TCP / UDP
+-- HTTP vs HTTPs
+ 
+
+
+192.168.1.3 -> 192.168.1.3 -> 8.8.8.8
+
+
+---- Encryption / Decryption
+-Hashing
+    - ALgorithm that takes input a message and outputs a digest (checksum, fingerprint. hash, crc)
+    - MD5, SHA1
+
+
+
+    
+
+- Data Integrity
+    - both parties share a secret key - somehow
+    - sender combines message + secret key to create a digest - hashFunction(message + key)
+    - receiver verifies by calculating the hash of the message + secret key
+
+- Authentication
+    - if the message is verified it means the sender is the person who sent it, cause he's the only person to have the secret key
+    - This ensures auth
+
+--The ABove is called MEssage Authentication Code (MAC)
+
+
+- COnfidentiality
+    - encryption is used to provide confidentiality
+
+
+Asymmetric key pair
+    - A wants to send to B
+    - A uses B's public key to encrypt 
+    - Only the corelating private key can decrypt the message
+    <------------Confidentiality------------------->
+    
+    - A wants to prove its identity
+    - A uses its private key to sign / encrypt the message
+    - Only the corelating A's public key can successfully
+    <-------------------Auth, Integrity------ Signatures------------------>
+
+
+---Bulk encryption ------ 
+    - First use Asymmetric key pair to share symmetric keys - key exchange
+    - then use symmetric keys for further encryptions for bulk 
+
+---------------------------------------------SSL / TLS ---------------------------------------------------------------------
+    - purpose - Confidentiality - symmetric encryption, MAC - INtegrity - hashing, Authentication-PKI
+
+
+    -  client - server - certificate authority - Public Key Infrastructure
+    - anybody can have a pair of asymmetric keys, how can the server be trusted that it is what it is -->> here comes the Certificate Authority into play
+    - CA is trusted by client, it genertaes a certifcate -> the certificate links a asymmetric key pair and gives to google.com -> so the certificate says whoever owns the private key for this public key is definitely google.com
+    
+
+    ---SSL / TLS Handshake ----
+         - client Hello
+         - server Hello
+         - server sends its certificate signed by CA's private key - > client verifies this certificate and ensures authentication
+         - now client generates a premaster secret key -> encrypts it with servers public key and sends it to server
+         - Now server uses private key to decrypt
+         - At the end both have premaster secret and other params exchanged
+         - they can begin communication
+         - end of handshake
+        
+
+     
+-- to prove identity -> Always use private key to ecrypt / integrity is also acheived here
+-- to ensure confidentiality -> always use public key of the other person to encrypt
+-- to ensure integrity -> use hashing
+
+
+
+
+--Symmetric 
+    - uses single shared secret key for both encryption and decryption
+    - key must be kept in secret and shared between the two parties
+    - generally faster and suited for bulk data encryption
+    - examples: Advanced Encryption standard, Data Encryption Standard
+
+--Asymm:
+    - pair of public key and private key
+    - public is used for encryption and private is used for decryption
+    - more secure / there is no need to share secret keys over unsecured medium
+    - RSA, Diffie-Hellman, DSA, Eliptical DSA
+
+
+
+---------------JWT -------------------
+
+structure - > header + payload + signature
+base64 encoded
+sensitive info should never travel in jwt payload
+
+
+--------------------------------------------
+------------------------------------------------------------------------------------------------------------
+Operating System
+-----------------------------------------------------------------------------------------------------------
+
+Process vs Thread
+
+- Program - executable file
+- when a program is loaded into memory and is executed by the processor it becomes a PROCESS
+- Each process has its own memory space
+- Thread is a unit of execution of a process
+- each thread has its own stack
+- threads within same process have shared memory space
+
+
+Function of operating system
+    - process management
+    - memory management
+    - file management
+    - device management
+    - security
+    - network management
+
+CPU scheduling algorithms:
+
+FCFS - first come first serve - based on arrival time
+Shortest Job First - shortest burst time
+Shortest Remaining Job First - Preemptive mode of SJF
+Round Robin - Each process in assigned a fixed time in a cyclic way
+Priority Based - non preemptive - process is exeucted based on priority
+
+
+
+
+
+--------------Clocks---------------------------------------
+CPU 
+    - clocks
+    - program counter
+    - Instruction register
+    - accumulator
+
+- on each clock tick -> Fetch -> next clock tick -> Decode -> Next clock tick -> Execute
+
+
+Memory Management 
+- Paging
+    - We use some portion of HDD as virtual RAM, 
+    - Not used RAM are stored into virtual Memory
+    - OS retrives data from sec memory in same size blocks called pages(chunks)
+    - RAM is also divided into pages called frames => always frame size = page size
+    - Mapping of virtual to physical address is done by Memory Management Unit
+
+    - Page Fault
+        - process A -> P1, P2, P3, P4 (divided)
+        - WHen a desired page to be executed is not there in the main memory but present in Secondary memeory
+
+    - Thrashing
+        - CPU spending excess time in swapping data b/w RAM and disk causing reduced performance
+
+    - Page Replacement Algo
+        - The algorithm decide which pages to page out / write to disk, when a page of memory to be allocated
+
+- Spooling
+    - Simultaneous Peripheral Operation Online
+    - Asynchronous processing of IO operation to increase system efficiency
+
+
+- Belady's Anomaly
+    -  Appears in FIFO Page replacement ALgo
+    - increase in number of frames would increase number of page fault - which is abnormal
+
+- RAID - Redundant Array of Independent Disks 
+
+
+-----------------------------DB Sharding--------------------------------------------------------------
+- Sharding is a technique to break up a database into smaller parts / horizontal scaling
+- Increasing availabilitu and scalability
+
+---------------------------------------- Design Hashmap -------------------------------------------------
+- use fixed array and linkedList
+----------------------------------------------------------------------------------------------------------
+
+
+
+To chcek:
+- Memcached vs redis
+- Bankers Algo
+- Inter process communication
+    - way in which process communicate with each other - independent process / cooperating process
+    - Shared Memeory - data will be saved in shared memory
+    - message passing - data will be saved to kernal (send), other process will take data from the kernal
+    - signal - 
+    - message queue - 
+    - sockets - endpoint uses
+    - semaphore - server / client example
+    - pipe - one way communication between process
+
+- LRU cache
+- fragmentation - INternal and external
+        - process from main memeory is swapped to secondary memory
+        - the meory in RAM is now divded into smaller chunks
+        - now the swapped process from sec memory cannot come back and sit in RAM
+        - This is called Fragmentation
+
+        - External 
+            - total memory is enough to satisfy the request but is not contigous
+        - Internal
+            - Memory chunk in RAM is bigger as there will be waste of remaining memeory

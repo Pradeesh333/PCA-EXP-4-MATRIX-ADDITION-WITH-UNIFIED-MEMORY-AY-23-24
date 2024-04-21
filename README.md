@@ -46,7 +46,7 @@ Google Colab with NVCC Compiler
 ## PROGRAM:
 
 ```
-%%cuda
+%%writefile withoutmemset.cu
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include <cuda.h>
@@ -237,8 +237,6 @@ int main(int argc, char **argv)
     double iElaps = seconds() - iStart;
     printf("initialization: \t %f sec\n", iElaps);
 
-    memset(hostRef, 0, nBytes);
-    memset(gpuRef, 0, nBytes);
 
     // add matrix at host side for result checks
     iStart = seconds();
@@ -283,16 +281,22 @@ int main(int argc, char **argv)
 
     return (0);
 }
+
+!nvcc -o cudabasic2 withoutmemset.cu
+!./cudabasic2
+!nvprof ./cudabasic2
 ```
 
 ## OUTPUT:
 
 ![](op1.png)
+![](op11.png)
 
 ### WITHOUT MEMSET()
 
 ![](op2.png)
+![](op22.png)
 
 ## RESULT:
 
-Thus the program has been executed by using unified memory. It is observed that removing memset function has given less time by a difference of 0.006344 sec.
+Thus the program has been executed by using unified memory. It is observed that removing memset function has given less time by a difference of 17.207 milli-sec.
